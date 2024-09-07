@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
 };
@@ -9,7 +10,7 @@ pub struct HttDee {
 }
 
 impl HttDee {
-    pub fn new(port: u16) -> io::Result<HttDee> {
+    pub fn new(port: u16, req_handlers: RequestHandlers) -> io::Result<HttDee> {
         let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
         let listener = TcpListener::bind(socket)?;
 
@@ -17,7 +18,7 @@ impl HttDee {
     }
 
     pub fn start(&self) {
-        println!("Server is now listening on port: {}", self.port);
+        println!("Server is now listening on port: {}..", self.port);
 
         for stream in self.listener.incoming() {
             // todo: maybe handle errors later
@@ -26,20 +27,35 @@ impl HttDee {
             parse_request(stream);
         }
     }
+}
 
-    // request handlers
-    pub fn get<F>(&self, handler: F)
-    where
-        F: FnOnce(),
-    {
-        todo!("do GET work..")
+type HandlerClosure = dyn FnOnce(&str);
+
+type Handler = Box<HandlerClosure>;
+
+#[derive(Eq, PartialEq, Hash)]
+enum HandlerMethods {
+    Get(&'static str),
+    Post(&'static str),
+}
+
+pub struct RequestHandlers {
+    handlers: HashMap<HandlerMethods, Handler>,
+}
+
+impl RequestHandlers {
+    pub fn new() -> RequestHandlers {
+        let handlers = HashMap::new();
+
+        RequestHandlers { handlers }
     }
 
-    pub fn post<F>(&self, handler: F)
-    where
-        F: FnOnce(),
-    {
-        todo!("do POST work..")
+    pub fn get(&mut self, uri: &'static str, handler: Handler) {
+        self.handlers.insert(HandlerMethods::Get(uri), handler);
+    }
+
+    pub fn post(&mut self, uri: &'static str, handler: Handler) {
+        self.handlers.insert(HandlerMethods::Post(uri), handler);
     }
 }
 
