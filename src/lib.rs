@@ -35,7 +35,7 @@ impl HttDee {
                         .req_handlers
                         .handlers
                         .get(&HandlerMethods::Get(uri.clone()))
-                        .unwrap();
+                        .unwrap_or_else(|| &self.req_handlers.not_found);
 
                     handler(&uri[..]);
                 }
@@ -58,13 +58,19 @@ enum HandlerMethods {
 
 pub struct RequestHandlers {
     handlers: HashMap<HandlerMethods, Handler>,
+    not_found: Handler,
 }
 
 impl RequestHandlers {
     pub fn new() -> RequestHandlers {
         let handlers = HashMap::new();
+        let not_found: Handler =
+            Box::new(|uri| println!("404: Not-Found. Route handler for {} undefined", uri));
 
-        RequestHandlers { handlers }
+        RequestHandlers {
+            handlers,
+            not_found,
+        }
     }
 
     pub fn get<F: Fn(&str) + 'static>(&mut self, uri: &'static str, handler: F) {
