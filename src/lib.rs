@@ -37,7 +37,6 @@ impl HttDee {
                         .get(&HandlerMethods::Get(uri.clone()))
                         .unwrap_or_else(|| &self.req_handlers.not_found);
 
-                    // let response = handler(&uri[..]);
                     let request = Request {
                         uri,
                         body: String::new(),
