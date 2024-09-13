@@ -30,23 +30,37 @@ impl HttDee {
             let stream = stream.unwrap();
 
             match parse_request(stream) {
-                RequestMethods::Get(uri) => {
+                RequestMethods::Get(uri, _stream) => {
                     let handler = self
                         .req_handlers
                         .handlers
                         .get(&HandlerMethods::Get(uri.clone()))
                         .unwrap_or_else(|| &self.req_handlers.not_found);
 
-                    handler(&uri[..]);
+                    // let response = handler(&uri[..]);
+                    let request = Request {
+                        uri,
+                        body: String::new(),
+                    };
+
+                    let response = handler(request);
+                    println!("Response: {}", response);
                 }
-                RequestMethods::Post(uri) => println!("POST URI: {:?}", uri),
-                _ => println!("Can't handle this request"),
+                RequestMethods::Post(uri, _stream) => println!("POST URI: {:?}", uri),
+                _ => println!("HTTP Verb not supported"),
             }
         }
     }
 }
 
-type HandlerClosure = dyn Fn(&str);
+#[derive(Debug)]
+pub struct Request {
+    // pub params   // later,
+    pub body: String,
+    pub uri: String,
+}
+
+type HandlerClosure = dyn Fn(Request) -> String;
 
 type Handler = Box<HandlerClosure>;
 
@@ -65,7 +79,11 @@ impl RequestHandlers {
     pub fn new() -> RequestHandlers {
         let handlers = HashMap::new();
         let not_found: Handler =
-            Box::new(|uri| println!("404: Not-Found. Route handler for {} undefined", uri));
+            Box::new(|req| {
+                println!("404: Not-Found. Route handler for {} undefined", req.uri);
+
+                format!("404: Not-Found. Route handler for {} undefined", req.uri)
+            });
 
         RequestHandlers {
             handlers,
@@ -73,20 +91,20 @@ impl RequestHandlers {
         }
     }
 
-    pub fn get<F: Fn(&str) + 'static>(&mut self, uri: &'static str, handler: F) {
+    pub fn get<F: Fn(Request) -> String + 'static>(&mut self, uri: &'static str, handler: F) {
         self.handlers
             .insert(HandlerMethods::Get(String::from(uri)), Box::new(handler));
     }
 
-    pub fn post<F: Fn(&str) + 'static>(&mut self, uri: &'static str, handler: F) {
+    pub fn post<F: Fn(Request) -> String + 'static>(&mut self, uri: &'static str, handler: F) {
         self.handlers
             .insert(HandlerMethods::Post(String::from(uri)), Box::new(handler));
     }
 }
 
 enum RequestMethods {
-    Get(String),
-    Post(String),
+    Get(String, TcpStream),
+    Post(String, TcpStream),
     Other,
 }
 
@@ -101,8 +119,8 @@ fn parse_request(mut stream: TcpStream) -> RequestMethods {
     let uri = req_line_split.next().unwrap().to_owned();
 
     match &method[..] {
-        "GET" => RequestMethods::Get(uri),
-        "POST" => RequestMethods::Post(uri),
+        "GET" => RequestMethods::Get(uri, stream),
+        "POST" => RequestMethods::Post(uri, stream),
         _ => RequestMethods::Other,
     }
 }
