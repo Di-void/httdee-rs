@@ -5,21 +5,23 @@ fn main() {
     let mut handlers = RequestHandlers::new();
 
     // GET request handlers..
-    handlers.get("/", |req| {
-        println!("Do GET work: {:?}", req);
+    handlers.get("/", |ctx| {
+        let status = String::from("200 OK");
+        println!("GET Request Context: {:?}", ctx);
 
-        String::from("Do GET work")
+        (status, String::from("GET work"))
     });
 
     // POST request handlers..
-    handlers.post("/", |req| {
-        println!("Do POST work: {:?}", req);
+    handlers.post("/", |ctx| {
+        let status = String::from("200 OK");
+        println!("Do POST work: {:?}", ctx);
 
-        String::from("Do POST work")
+        (status, String::from("POST work"))
     });
 
     // start server
-    match HttDee::new(8080, handlers) {
+    match HttDee::new(7878, handlers) {
         Ok(server) => {
             // start server
             server.start();
